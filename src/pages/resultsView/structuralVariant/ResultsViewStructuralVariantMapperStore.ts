@@ -29,6 +29,16 @@ import {
     GenomeNexusAPI,
     GenomeNexusAPIInternal,
 } from 'genome-nexus-ts-api-client';
+import { fetchTranscriptsForGeneWithFallback } from 'pages/patientView/fusionViewer/data/genomeNexusTranscriptService';
+import { TranscriptData } from 'pages/patientView/fusionViewer/data/types';
+import { rankedColorMap } from 'pages/patientView/fusionViewer/data/partnerPalette';
+import {
+    AnchoredStructuralVariant,
+    anchorStructuralVariant,
+    buildPartnerSummaries,
+    genomeBuildOf,
+    PartnerSummary,
+} from './structuralVariantPartners';
 
 export class ResultsViewStructuralVariantMapperStore {
     constructor(
@@ -115,10 +125,46 @@ export class ResultsViewStructuralVariantMapperStore {
     }
 
     @computed
+    get anchoredStructuralVariants(): AnchoredStructuralVariant[] {
+        return (this.fusions || []).map(sv =>
+            anchorStructuralVariant(sv, this.gene)
+        );
+    }
+
+    @computed
+    get partnerSummaries(): PartnerSummary[] {
+        return buildPartnerSummaries(this.anchoredStructuralVariants);
+    }
+
+    @computed
+    get partnerColorMap(): Map<string, string> {
+        return rankedColorMap(this.partnerSummaries.map(p => p.partner));
+    }
+
+    readonly geneTranscript = remoteData<TranscriptData | undefined>({
+        await: () => [this.studyIdToStudy],
+        invoke: async () => {
+            const study = this.studyIdToStudy.result![this.fusions[0]?.studyId];
+            const transcripts = await fetchTranscriptsForGeneWithFallback(
+                this.gene.hugoGeneSymbol,
+                undefined,
+                genomeBuildOf(study?.referenceGenome)
+            );
+            return transcripts.find(t => t.isForteSelected) || transcripts[0];
+        },
+    });
+
+    @computed
     get dataStore(): ResultViewFusionMapperDataStore {
         const fusionData = (
             this.fusions || []
         ).map((fusion: StructuralVariant) => [fusion]);
-        return new ResultViewFusionMapperDataStore(fusionData);
+        const partnerBySv = new Map(
+            this.anchoredStructuralVariants.map(a => [a.sv, a.partner])
+        );
+        return new ResultViewFusionMapperDataStore(
+            fusionData,
+            sv => partnerBySv.get(sv) || ''
+        );
     }
 }

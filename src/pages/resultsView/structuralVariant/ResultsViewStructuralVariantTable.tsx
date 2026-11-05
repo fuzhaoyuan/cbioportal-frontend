@@ -9,6 +9,10 @@ import StructuralVariantTable, {
     FusionTableColumnType,
     IFusionTableProps,
 } from 'shared/components/structuralVariantTable/StructuralVariantTable';
+import { StructuralVariant } from 'cbioportal-ts-api-client';
+import { fusionViewerPreviewUrl } from './fusionViewerPreviewLink';
+
+const FUSION_VIEWER_COLUMN = 'Fusion Viewer' as FusionTableColumnType;
 
 export interface IResultsViewFusionTableProps extends IFusionTableProps {
     // add results view specific props here if needed
@@ -58,8 +62,35 @@ export default class ResultsViewStructuralVariantTable extends StructuralVariant
             FusionTableColumnType.CONNECTION_TYPE,
             FusionTableColumnType.EVENT_INFO,
             FusionTableColumnType.VARIANT_CLASS,
+            FUSION_VIEWER_COLUMN,
             FusionTableColumnType.LENGTH,
             FusionTableColumnType.COMMENTS,
         ],
     };
+
+    protected generateColumns() {
+        super.generateColumns();
+        this._columns[FUSION_VIEWER_COLUMN] = {
+            name: FUSION_VIEWER_COLUMN,
+            render: (d: StructuralVariant[]) => (
+                <a
+                    href={fusionViewerPreviewUrl(d[0])}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    data-test="sv-fusion-viewer-link"
+                >
+                    Open <i className="fa fa-external-link" />
+                </a>
+            ),
+            download: (d: StructuralVariant[]) => fusionViewerPreviewUrl(d[0]),
+            tooltip: (
+                <span>
+                    Open this structural variant in the Fusion Viewer (PR 5483
+                    deploy preview)
+                </span>
+            ),
+            visible: true,
+        };
+    }
 }

@@ -18,6 +18,9 @@ import { MakeMobxView } from 'shared/components/MobxView';
 import { StructuralVariant } from 'cbioportal-ts-api-client';
 import ErrorMessage from 'shared/components/ErrorMessage';
 import StructuralVariantChromoscope from './StructuralVariantChromoscope';
+import StructuralVariantBreakpoints from './StructuralVariantBreakpoints';
+import StructuralVariantPartnerTable from './StructuralVariantPartnerTable';
+import { FilterResetPanel } from 'react-mutation-mapper';
 
 export interface IFusionMapperProps {
     store: ResultsViewStructuralVariantMapperStore;
@@ -67,6 +70,25 @@ export default class ResultsViewStructuralVariantMapper extends React.Component<
         return `Structural Variants${multipleStructuralVariantInfo}`;
     }
 
+    @computed get breakpointFilterInfo(): string {
+        const dataStore = this.props.store.dataStore;
+        const parts: string[] = [];
+        if (dataStore.selectedPartners.size > 0) {
+            parts.push(
+                `partner ${Array.from(dataStore.selectedPartners).join(', ')}`
+            );
+        }
+        if (dataStore.selectedBreakpointSlot) {
+            parts.push(
+                `breakpoint in ${dataStore.selectedBreakpointSlot.label}`
+            );
+        }
+        const n = dataStore.sortedFilteredData.length;
+        return `Showing ${n} structural variant${
+            n === 1 ? '' : 's'
+        } with ${parts.join(' and ')}.`;
+    }
+
     tableUI = MakeMobxView({
         await: () => [
             this.props.store.studyIdToStudy,
@@ -76,11 +98,42 @@ export default class ResultsViewStructuralVariantMapper extends React.Component<
         render: () => {
             return (
                 <>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 10,
+                            alignItems: 'stretch',
+                            marginBottom: 10,
+                        }}
+                    >
+                        <div style={{ flex: '0 0 744px', maxWidth: '100%' }}>
+                            <StructuralVariantBreakpoints
+                                store={this.props.store}
+                            />
+                        </div>
+                        <div style={{ flex: '1 1 480px', minWidth: 0 }}>
+                            <StructuralVariantPartnerTable
+                                store={this.props.store}
+                            />
+                        </div>
+                    </div>
                     <StructuralVariantChromoscope
                         dataStore={this.props.store.dataStore}
                         studyIdToStudy={this.props.store.studyIdToStudy.result!}
                         entrezGeneId={this.props.store.gene.entrezGeneId}
                     />
+                    {this.props.store.dataStore.hasBreakpointFilters && (
+                        <FilterResetPanel
+                            resetFilters={
+                                this.props.store.dataStore
+                                    .clearBreakpointFilters
+                            }
+                            filterInfo={this.breakpointFilterInfo}
+                            className="alert alert-success small"
+                            buttonClass="btn btn-default btn-xs"
+                        />
+                    )}
                     <ResultsViewStructuralVariantTable
                         dataStore={this.props.store.dataStore}
                         itemsLabelPlural={this.itemsLabelPlural}
